@@ -19,7 +19,7 @@ services:
       - "5090:5090/udp"
     labels:
       traefik.enable: true
-      traefik.http.services.voip.loadbalancer.server.port: 5000 # default 3cx http port
+      traefik.http.services.voip.loadbalancer.server.port: 8080 # default 3cx http port
       
 volumes:
   voip:
