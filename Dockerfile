@@ -1,41 +1,42 @@
-FROM debian:buster
+FROM debian:stretch
 
-ARG PACKAGE_VERSION=18.0.1.237
-ENV container docker
-ENV LC_ALL C
+ARG BUILD_STRING
+ARG BUILD_DATE
+ARG BUILD_TIME
+
+LABEL build.string $BUILD_STRING
+LABEL build.date $BUILD_DATE
+LABEL build.time $BUILD_TIME
+
 ENV DEBIAN_FRONTEND noninteractive
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en
+ENV container docker
 
-COPY systemctl /bin/
+RUN apt-get update -y \
+ && apt-get upgrade -y \
+ && apt-get install -y --allow-unauthenticated \
+ apt-utils \
+ wget \
+ gnupg2 \
+ systemd \
+ locales \
+ && sed -i 's/\# \(en_US.UTF-8\)/\1/' /etc/locale.gen \
+ && locale-gen \
+ && wget -O- http://downloads.3cx.com/downloads/3cxpbx/public.key | apt-key add - \  
+ && echo "deb http://downloads.3cx.com/downloads/debian stretch main" | tee /etc/apt/sources.list.d/3cxpbx.list \
+ && apt-get update -y \
+ && apt-get install -y --allow-unauthenticated \
+ net-tools \
+ $(apt-cache depends 3cxpbx | grep Depends | sed "s/.*ends:\ //" | tr '\n' ' ') \
+ && rm -f /lib/systemd/system/multi-user.target.wants/* \
+ && rm -f /etc/systemd/system/*.wants/* \
+ && rm -f /lib/systemd/system/local-fs.target.wants/* \
+ && rm -f /lib/systemd/system/sockets.target.wants/*udev* \
+ && rm -f /lib/systemd/system/sockets.target.wants/*initctl* \
+ && rm -f /lib/systemd/system/basic.target.wants/* \
+ && rm -f /lib/systemd/system/anaconda.target.wants/*
 
-RUN chmod +x /bin/systemctl \
-    && apt-get update -qq \
-    && apt-get install -qq --no-install-recommends -y unattended-upgrades ca-certificates wget gnupg1 gettext-base \
-    && wget -O- http://downloads.3cx.com/downloads/3cxpbx/public.key | apt-key add - \   
-    && echo "deb http://downloads.3cx.com/downloads/debian buster main" | tee /etc/apt/sources.list.d/3cxpbx.list \
-    && apt-get update -qq \
-    && apt-get install -d -qq -y --no-install-recommends 3cxpbx=$PACKAGE_VERSION systemd systemd-sysv \
-    && apt-get install -qq -y --no-install-recommends 3cxpbx=$PACKAGE_VERSION \
-    && apt-get install -qq -y --no-install-recommends systemd systemd-sysv  \
-    && apt-get clean -qq \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && rm -f /lib/systemd/system/multi-user.target.wants/* \
-    /etc/systemd/system/*.wants/* \
-    /lib/systemd/system/local-fs.target.wants/* \
-    /lib/systemd/system/sockets.target.wants/*udev* \
-    /lib/systemd/system/sockets.target.wants/*initctl* \
-    /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
-    /lib/systemd/system/systemd-update-utmp* \
-    && echo ForwardToConsole=yes >> /etc/systemd/journald.conf \
-    && echo MaxLevelConsole=err >> /etc/systemd/journald.conf \
-    && /usr/sbin/3CXCleanup \
-    && systemctl enable nginx
+EXPOSE 8080/tcp 5001/tcp 5060/tcp 5060/udp 5061/tcp 5090/tcp 5090/udp 9000-9500/udp
 
-VOLUME [ "/sys/fs/cgroup" ]
-
-EXPOSE 5015/tcp 5000/tcp 5001/tcp 5090/tcp 5090/udp
-
-COPY 3cx-webconfig.service /etc/systemd/system/
-COPY docker-3cx.sh /usr/local/bin/
-COPY 3cx-restore-setupconfig.xml /usr/local/share/
-
-CMD    [ "docker-3cx.sh" ]
+CMD ["/lib/systemd/systemd"]
