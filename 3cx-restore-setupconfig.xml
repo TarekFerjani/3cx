@@ -45,7 +45,7 @@
     </option>
     <option>
       <code>HttpPort</code>
-      <answer>5001</answer>
+      <answer>80</answer>
     </option>
 	<option>
       <code>SipPort</code>
